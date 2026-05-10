@@ -75,10 +75,18 @@ function ChartCanvas({id, type, data, options, height}) {
 }
 
 // ---------- Chart Section ----------
-function ChartSection({title, kpiRef, legends, chartProps, onKpiClick}) {
+function ChartSection({title, kpiRef, legends, chartProps, onKpiClick, warnings, weekLabels}) {
+  const warningWeeks = warnings && weekLabels ? weekLabels.filter((_, i) => warnings[i]) : [];
   return (
     <div style={{marginBottom: 18}}>
-      <h2 style={S.h2}>{title} {kpiRef && <span style={{...S.kpiRef, ...(onKpiClick ? {cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3} : {})}} onClick={onKpiClick}>{kpiRef}</span>}</h2>
+      <h2 style={S.h2}>{title} {kpiRef && <span style={{...S.kpiRef, ...(onKpiClick ? {cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3} : {})}} onClick={onKpiClick}>{kpiRef}</span>}
+      {warningWeeks.length > 0 && <span style={{marginLeft: 8, fontSize: 12, color: '#b45309'}} title={'Incomplete data: ' + warningWeeks.join(', ')}>⚠</span>}
+      </h2>
+      {warningWeeks.length > 0 && (
+        <div style={{fontSize: 11, color: '#b45309', margin: '-2px 0 4px'}}>
+          ⚠ Incomplete data for: {warningWeeks.join(', ')}
+        </div>
+      )}
       <div style={S.legend}>
         {legends.map((l, i) => (
           <span key={i}>
@@ -373,6 +381,8 @@ export default function App() {
                     title="Daily Production Team Checked In Time"
                     kpiRef="— KPI-356"
                     onKpiClick={() => handleKpiClick('KPI-356')}
+                    warnings={data.histWarnings.kpi356}
+                    weekLabels={data.histWeekLabels}
                     legends={[
                       {color: '#ff4700', label: 'Actual total direct assembly hrs'},
                       {color: '#ffb999', label: 'Projected total direct assembly hrs'},
@@ -385,6 +395,8 @@ export default function App() {
                     title="Hours per Endurance unit (all assembly)"
                     kpiRef="— KPI-356 ÷ KPI-376"
                     onKpiClick={() => handleKpiClick('KPI-376')}
+                    warnings={data.histWarnings.kpi356.map((w, i) => w || data.histWarnings.kpi376[i])}
+                    weekLabels={data.histWeekLabels}
                     legends={[
                       {color: '#393939', label: 'Actual hrs / Endurance build'},
                       {color: '#999', label: 'Projected (ramps to target)'}
@@ -396,6 +408,8 @@ export default function App() {
                     title="Total Endurance Line WIP"
                     kpiRef="— KPI-132"
                     onKpiClick={() => handleKpiClick('KPI-132')}
+                    warnings={data.histWarnings.kpi132}
+                    weekLabels={data.histWeekLabels}
                     legends={[
                       {color: '#393939', label: 'Actual weekly WiP (end-of-week)'},
                       {color: '#ff4700', label: 'Projected WiP path'}
@@ -407,6 +421,8 @@ export default function App() {
                     title="Endurance Production Rate"
                     kpiRef="— KPI-376"
                     onKpiClick={() => handleKpiClick('KPI-376')}
+                    warnings={data.histWarnings.kpi376}
+                    weekLabels={data.histWeekLabels}
                     legends={[
                       {color: '#393939', label: 'Actual Endurance build %'},
                       {color: '#999', label: 'Projected completions'},

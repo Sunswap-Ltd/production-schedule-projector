@@ -1,7 +1,8 @@
 import {useMemo} from 'react';
 import {useBase, useRecords} from '@airtable/blocks/interface/ui';
-import {mondayOfWeek, addDays, fmtDate} from '../engine/helpers';
+import {mondayOfWeek, addDays, fmtDate, isoDay} from '../engine/helpers';
 import {HIST_WEEK_COUNT} from '../engine/constants';
+import {UK_BANK_HOLIDAYS} from '../engine/constants';
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -135,6 +136,10 @@ export function useAirtableData() {
     const histTotalHrs = new Array(HIST_WEEK_COUNT).fill(0);
     const histEndHrs = new Array(HIST_WEEK_COUNT).fill(0);
 
+    const kpi132Dates = Array.from({length: HIST_WEEK_COUNT}, () => new Set());
+    const kpi356Dates = Array.from({length: HIST_WEEK_COUNT}, () => new Set());
+    const kpi376Dates = Array.from({length: HIST_WEEK_COUNT}, () => new Set());
+
     if (kpiRecords) {
       const kpi132 = [];
       const kpi356 = [];
@@ -167,7 +172,10 @@ export function useAirtableData() {
         if (isNaN(d.getTime())) continue;
         const mon = mondayOfWeek(d);
         const idx = weekIndex(histWeekMondays, mon);
-        if (idx >= 0) histWipWeekly[idx] = k.value;
+        if (idx >= 0) {
+          histWipWeekly[idx] = k.value;
+          kpi132Dates[idx].add(k.date);
+        }
       }
 
       if (currentWip > 0) {
@@ -183,6 +191,7 @@ export function useAirtableData() {
         if (idx >= 0) {
           histTotalHrs[idx] += k.value;
           histEndHrs[idx] += k.value;
+          kpi356Dates[idx].add(k.date);
         }
       }
 
@@ -192,9 +201,39 @@ export function useAirtableData() {
         if (isNaN(d.getTime())) continue;
         const mon = mondayOfWeek(d);
         const idx = weekIndex(histWeekMondays, mon);
-        if (idx >= 0) histEndBuilds[idx] += k.value;
+        if (idx >= 0) {
+          histEndBuilds[idx] += k.value;
+          kpi376Dates[idx].add(k.date);
+        }
       }
     }
+
+    // Count working days per historical week and flag incomplete KPI data
+    const histWorkingDays = histWeekMondays.map(mon => {
+      let n = 0;
+      for (let i = 0; i < 5; i++) {
+        const d = addDays(mon, i);
+        if (!UK_BANK_HOLIDAYS.has(isoDay(d))) n++;
+      }
+      return n;
+    });
+
+    // For the current week, only count working days up to today
+    const lastIdx = HIST_WEEK_COUNT - 1;
+    const lastMon = histWeekMondays[lastIdx];
+    let currentWeekDays = 0;
+    for (let i = 0; i < 5; i++) {
+      const d = addDays(lastMon, i);
+      if (d > today) break;
+      if (!UK_BANK_HOLIDAYS.has(isoDay(d))) currentWeekDays++;
+    }
+    histWorkingDays[lastIdx] = currentWeekDays;
+
+    const histWarnings = {
+      kpi132: histWorkingDays.map((wd, i) => kpi132Dates[i].size < wd),
+      kpi356: histWorkingDays.map((wd, i) => kpi356Dates[i].size < wd),
+      kpi376: histWorkingDays.map((wd, i) => kpi376Dates[i].size < wd),
+    };
 
     return {
       sequence,
@@ -207,6 +246,7 @@ export function useAirtableData() {
       histEndBuilds,
       histTotalHrs,
       histEndHrs,
+      histWarnings,
       buildsTable,
       kpiMetaRecords: kpiMetaTable ? kpiMetaRecords : [],
       isLoading: false
