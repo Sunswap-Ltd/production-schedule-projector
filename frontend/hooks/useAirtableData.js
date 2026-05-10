@@ -151,8 +151,22 @@ export function useAirtableData() {
         if (type !== 'Actual') continue;
 
         const dateStr = r.getCellValueAsString('Date') || '';
+        if (!dateStr) continue;
+
+        // Track date presence for completeness warnings before metric check
+        const dParsed = new Date(dateStr + 'T00:00:00');
+        if (!isNaN(dParsed.getTime())) {
+          const mon = mondayOfWeek(dParsed);
+          const idx = weekIndex(histWeekMondays, mon);
+          if (idx >= 0) {
+            if (kpiName.includes('KPI-132')) kpi132Dates[idx].add(dateStr);
+            else if (kpiName.includes('KPI-356')) kpi356Dates[idx].add(dateStr);
+            else if (kpiName.includes('KPI-376')) kpi376Dates[idx].add(dateStr);
+          }
+        }
+
         const metric = r.getCellValue('Metric');
-        if (!dateStr || metric == null) continue;
+        if (metric == null) continue;
 
         const val = typeof metric === 'number' ? metric : parseFloat(metric) || 0;
 
@@ -174,7 +188,6 @@ export function useAirtableData() {
         const idx = weekIndex(histWeekMondays, mon);
         if (idx >= 0) {
           histWipWeekly[idx] = k.value;
-          kpi132Dates[idx].add(k.date);
         }
       }
 
@@ -191,7 +204,6 @@ export function useAirtableData() {
         if (idx >= 0) {
           histTotalHrs[idx] += k.value;
           histEndHrs[idx] += k.value;
-          kpi356Dates[idx].add(k.date);
         }
       }
 
@@ -203,7 +215,6 @@ export function useAirtableData() {
         const idx = weekIndex(histWeekMondays, mon);
         if (idx >= 0) {
           histEndBuilds[idx] += k.value;
-          kpi376Dates[idx].add(k.date);
         }
       }
     }
