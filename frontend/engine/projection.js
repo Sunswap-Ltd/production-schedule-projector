@@ -11,10 +11,26 @@ export function workingDaysInWeek(mondayDate) {
   return n;
 }
 
+// Project the line forward week by week.
+//
+// The model is a flow balance (conservation of build-equivalents of work):
+//
+//     outputRate = inputRate - d(WiP)/dt
+//
+//   - inputRate  : labour-driven work performed anywhere on the line per week
+//                  (= hrs / hrs-per-build). This is what KPI-376 actually measures.
+//   - WiP        : build-equivalents of partial work sitting on the line (KPI-132).
+//   - outputRate : finished builds leaving the line per week — this is what sets
+//                  delivery dates.
+//
+// Cumulatively, cumOutput = cumInput - (WiP - WiP0): burning WiP down delivers a
+// one-time bonus of finished builds equal to the WiP drained, so delivery dates pull
+// in; letting WiP build up starves output and pushes dates out.
 export function project(scenario, currentWip, projFirstMon) {
   const out = [];
-  let wip = currentWip;
-  let cumCompletions = 0;
+  let cumInput = 0;
+  let cumOutput = 0;
+  let prevWip = currentWip;
 
   for (let w = 1; w <= scenario.horizon; w++) {
     const monday = new Date(projFirstMon);
@@ -26,15 +42,25 @@ export function project(scenario, currentWip, projFirstMon) {
     const nominalHrs = techs * scenario.effectivePerTechWeekly;
     const hrs = nominalHrs * bhFactor;
     const hpb = lerp(scenario.currentHpb, scenario.hrsPerBuild, (w - 1) / scenario.hpbRampWeeks);
-    const completions = hpb > 0 ? hrs / hpb : 0;
-    cumCompletions += completions;
 
-    const wipTarget = lerp(currentWip, scenario.targetWip, (w - 1) / scenario.wipRampWeeks);
-    const wipChange = wipTarget - wip;
-    wip = wipTarget;
-    const newStarts = Math.max(0, completions + wipChange);
+    // Input rate: labour-driven work performed this week (build-equivalents).
+    const inputRate = hpb > 0 ? hrs / hpb : 0;
+    cumInput += inputRate;
 
-    out.push({week: w, monday, hrs, nominalHrs, hpb, completions, cumCompletions, wip, newStarts, workingDays: wdays, techs});
+    // WiP path: lerp from current WiP toward the target over the ramp.
+    const wip = lerp(currentWip, scenario.targetWip, (w - 1) / scenario.wipRampWeeks);
+    const wipChange = wip - prevWip; // negative while burning WiP down
+    prevWip = wip;
+
+    // Output = input - change in WiP. Clamp at 0: you cannot un-ship a build, and
+    // WiP cannot rise faster than work is fed in. cumOutput stays monotonic.
+    const outputRate = Math.max(0, inputRate - wipChange);
+    cumOutput += outputRate;
+
+    // Little's Law readout: lead time (weeks) = WiP / throughput (the exit rate).
+    const leadTimeWeeks = outputRate > 0 ? wip / outputRate : null;
+
+    out.push({week: w, monday, hrs, nominalHrs, hpb, inputRate, outputRate, cumInput, cumOutput, wip, wipChange, leadTimeWeeks, workingDays: wdays, techs});
   }
   return out;
 }
@@ -64,9 +90,10 @@ export function deliveryDates(projection, firstDelivery, sequence, progress, cur
       if (cumWorkRequired <= 0.001) {
         date = today;
       } else {
+        // Delivery is governed by cumulative OUTPUT (builds shipped), not input.
         for (let i = 0; i < projection.length; i++) {
-          const prevCum = i === 0 ? 0 : projection[i - 1].cumCompletions;
-          const curCum = projection[i].cumCompletions;
+          const prevCum = i === 0 ? 0 : projection[i - 1].cumOutput;
+          const curCum = projection[i].cumOutput;
           if (curCum >= cumWorkRequired) {
             const denom = (curCum - prevCum) || 1;
             const frac = (cumWorkRequired - prevCum) / denom;
@@ -99,15 +126,22 @@ export function buildScenario(sliders) {
   const annualSick = annualContracted * (sliders.sicknessPct / 100);
   const effectivePerTechWeekly = Math.max(1, (annualContracted - annualHoliday - annualSick) / 52);
 
+  const stations = Math.max(1, sliders.stations);
+
   return {
     targetWip: sliders.targetWip,
-    wipRampWeeks: sliders.wipRamp,
+    wipRampWeeks: Math.max(1, sliders.wipRamp),
+    stations,
+    // Baseline (healthy) WiP: N stations each holding one build at its average
+    // mid-station progress sums to N/2 in build-equivalents. WiP above this is dead
+    // queue — started but not in a station, adding lead time without throughput.
+    baselineWip: stations / 2,
     startTechs: sliders.startTechs,
     endTechs: sliders.endTechs,
-    rampWeeks: sliders.rampWeeks,
+    rampWeeks: Math.max(1, sliders.rampWeeks),
     startHpb: sliders.startHpb,
     hrsPerBuild: sliders.hrsPerBuild,
-    hpbRampWeeks: sliders.hpbRamp,
+    hpbRampWeeks: Math.max(1, sliders.hpbRamp),
     horizon: sliders.horizon,
     contractedHrs: sliders.contractedHrs,
     sicknessPct: sliders.sicknessPct,

@@ -266,9 +266,10 @@ export default function App() {
     const completionsData = {
       labels,
       datasets: [
-        {label: 'Actual completions', data: pad(data.histEndBuilds), backgroundColor: '#393939', stack: 'c'},
-        {label: 'Projected completions', data: prePad(proj.map(p => +p.completions.toFixed(3))), backgroundColor: '#999', stack: 'c'},
-        {label: 'MES Schedule', data: prePad(mesSchedule.map(v => +v.toFixed(3))), backgroundColor: '#2563EB', stack: 'mes'}
+        {label: 'Actual production rate (input)', data: pad(data.histEndBuilds), backgroundColor: '#393939', stack: 'c'},
+        {label: 'Projected output (deliveries)', data: prePad(proj.map(p => +p.outputRate.toFixed(3))), backgroundColor: '#ff4700', stack: 'c'},
+        {label: 'MES Schedule', data: prePad(mesSchedule.map(v => +v.toFixed(3))), backgroundColor: '#2563EB', stack: 'mes'},
+        {type: 'line', label: 'Projected input (work fed in)', data: prePad(proj.map(p => +p.inputRate.toFixed(3))), borderColor: '#999', borderWidth: 2, pointRadius: 0, borderDash: [4, 3], fill: false, tension: 0, order: 0}
       ]
     };
 
@@ -299,7 +300,22 @@ export default function App() {
       }
     };
 
-    return {inHorizon, hrsData, hrsOptions, hpbData, completionsData, wipData, barOptions, lineOptions, scenario, proj};
+    // Flow-balance + Little's-Law lead-time readout
+    const wipDelta = +(data.currentWip - scenario.targetWip).toFixed(1); // >0 = draining WiP
+    const leadNow = proj.length ? proj[0].leadTimeWeeks : null;
+    const leadEnd = proj.length ? proj[proj.length - 1].leadTimeWeeks : null;
+    const readout = {
+      currentWip: data.currentWip,
+      targetWip: scenario.targetWip,
+      baselineWip: scenario.baselineWip,
+      stations: scenario.stations,
+      wipDelta,
+      leadNow,
+      leadEnd,
+      belowBaseline: scenario.targetWip < scenario.baselineWip
+    };
+
+    return {inHorizon, hrsData, hrsOptions, hpbData, completionsData, wipData, barOptions, lineOptions, scenario, proj, readout};
   }, [data, sliders]);
 
   if (!data) {
@@ -333,6 +349,7 @@ export default function App() {
       <h1 style={S.h1}>Endurance build completion projector</h1>
       <p style={S.sub}>
         Scenario tool — live data from Airtable. Drag sliders to model WiP burn-down, labour-hour ramp, and Endurance share.
+        Deliveries follow a flow balance: output = input − change in WiP. Burning WiP down ships a one-off bonus of finished builds, pulling dates earlier; letting WiP build up starves output and pushes them out.
       </p>
 
       <div style={S.layout}>
@@ -343,6 +360,9 @@ export default function App() {
             {scenarioSliders.map(s => (
               <Slider key={s.id} {...s} value={sliders[s.id]} onChange={updateSlider} />
             ))}
+            <div style={{fontSize: 11, color: '#777', lineHeight: 1.4, margin: '2px 0 8px'}}>
+              Baseline WiP = stations ÷ 2 = {(sliders.stations / 2).toFixed(1)} build-equivalents (one build per station, on average half-done). WiP above this is dead queue. Burning WiP toward target delivers the drained builds as a one-off; deliveries otherwise track input throughput.
+            </div>
             <div style={S.ctl}>
               <label style={S.label}>Start from build #</label>
               <input type="number" min={1} max={999} value={sliders.startSlot || 1} onChange={e => updateSlider('startSlot', e.target.value)} style={S.dateInput} />
@@ -417,6 +437,20 @@ export default function App() {
                     chartProps={{id: 'wip', type: 'line', data: result.wipData, options: result.lineOptions}}
                   />
 
+                  <div style={{fontSize: 12, color: '#393939', background: '#faf7f5', border: '1px solid #eee', borderRadius: 6, padding: '8px 12px', margin: '-6px 0 18px', lineHeight: 1.5}}>
+                    {result.readout.wipDelta > 0
+                      ? <span><strong>Flow balance:</strong> WiP drains {result.readout.currentWip} → {result.readout.targetWip} ({result.readout.wipDelta} build-equivalents), shipped as a one-off output bonus on top of input — pulling dates in.</span>
+                      : result.readout.wipDelta < 0
+                        ? <span style={{color: '#b45309'}}><strong>Flow balance:</strong> WiP builds {result.readout.currentWip} → {result.readout.targetWip} ({Math.abs(result.readout.wipDelta)} build-equivalents), starving output below input — pushing dates out.</span>
+                        : <span><strong>Flow balance:</strong> WiP flat at {result.readout.currentWip} — output equals input, dates are throughput-bound.</span>}
+                    <br />
+                    <strong>Lead time (Little&rsquo;s Law, WiP ÷ output):</strong>{' '}
+                    {result.readout.leadNow != null ? result.readout.leadNow.toFixed(1) + ' wk now' : '—'}
+                    {result.readout.leadEnd != null ? ' → ' + result.readout.leadEnd.toFixed(1) + ' wk at target WiP' : ''}.
+                    {' '}Baseline WiP {result.readout.baselineWip.toFixed(1)} ({result.readout.stations} stations).
+                    {result.readout.belowBaseline && <span style={{color: '#b45309'}}> &nbsp;Target WiP is below baseline — the line can&rsquo;t stay full at that level.</span>}
+                  </div>
+
                   <ChartSection
                     title="Endurance Production Rate"
                     kpiRef="— KPI-376"
@@ -424,8 +458,9 @@ export default function App() {
                     warnings={data.histWarnings.kpi376}
                     weekLabels={data.histWeekLabels}
                     legends={[
-                      {color: '#393939', label: 'Actual Endurance build %'},
-                      {color: '#999', label: 'Projected completions'},
+                      {color: '#393939', label: 'Actual production rate (input)'},
+                      {color: '#ff4700', label: 'Projected output (deliveries)'},
+                      {color: '#999', label: 'Projected input (work fed in)'},
                       {color: '#2563EB', label: 'MES Schedule'}
                     ]}
                     chartProps={{id: 'completions', type: 'bar', data: result.completionsData, options: result.barOptions}}
