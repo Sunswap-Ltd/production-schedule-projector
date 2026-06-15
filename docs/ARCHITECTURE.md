@@ -54,7 +54,7 @@ The UI reads these directly; `deliveryDates()` uses `cumOutput`.
 
 Defined in `constants.js` (`DEFAULT_SLIDERS` + `SLIDER_CONFIG`), grouped `scenario` vs `headcount`,
 rendered generically by `App.js`. `useSliders()` persists to `localStorage` and supports named saved
-scenarios. Scenario sliders include: `targetWip`, `wipRamp`, `stations`, tech ramp, hrs-per-build ramp,
+scenarios. Scenario sliders include: `targetWip`, `wipRamp`, tech ramp, hrs-per-build ramp,
 horizon, plus a non-slider `startSlot` (which build to start the schedule from).
 
 ## UI (`App.js`)

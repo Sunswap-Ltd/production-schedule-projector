@@ -307,12 +307,9 @@ export default function App() {
     const readout = {
       currentWip: data.currentWip,
       targetWip: scenario.targetWip,
-      baselineWip: scenario.baselineWip,
-      stations: scenario.stations,
       wipDelta,
       leadNow,
-      leadEnd,
-      belowBaseline: scenario.targetWip < scenario.baselineWip
+      leadEnd
     };
 
     return {inHorizon, hrsData, hrsOptions, hpbData, completionsData, wipData, barOptions, lineOptions, scenario, proj, readout};
@@ -361,7 +358,7 @@ export default function App() {
               <Slider key={s.id} {...s} value={sliders[s.id]} onChange={updateSlider} />
             ))}
             <div style={{fontSize: 11, color: '#777', lineHeight: 1.4, margin: '2px 0 8px'}}>
-              Baseline WiP = stations ÷ 2 = {(sliders.stations / 2).toFixed(1)} build-equivalents (one build per station, on average half-done). WiP above this is dead queue. Burning WiP toward target delivers the drained builds as a one-off; deliveries otherwise track input throughput.
+              Burning WiP toward target delivers the drained builds as a one-off; deliveries otherwise track input throughput.
             </div>
             <div style={S.ctl}>
               <label style={S.label}>Start from build #</label>
@@ -447,8 +444,6 @@ export default function App() {
                     <strong>Lead time (Little&rsquo;s Law, WiP ÷ output):</strong>{' '}
                     {result.readout.leadNow != null ? result.readout.leadNow.toFixed(1) + ' wk now' : '—'}
                     {result.readout.leadEnd != null ? ' → ' + result.readout.leadEnd.toFixed(1) + ' wk at target WiP' : ''}.
-                    {' '}Baseline WiP {result.readout.baselineWip.toFixed(1)} ({result.readout.stations} stations).
-                    {result.readout.belowBaseline && <span style={{color: '#b45309'}}> &nbsp;Target WiP is below baseline — the line can&rsquo;t stay full at that level.</span>}
                   </div>
 
                   <ChartSection

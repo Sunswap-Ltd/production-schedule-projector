@@ -34,9 +34,6 @@ Burning WiP down ships a one-off bonus of finished builds (you drain the buffer)
 dates are throughput-bound. See [docs/MODEL.md](docs/MODEL.md) for the full derivation and the design
 history (why a congestion-penalty approach was tried and rejected).
 
-**Baseline WiP = stations ÷ 2** (8 stations → 4 build-equivalents): each station holds one build at, on
-average, half its station's work — summing to N/2. WiP above baseline is dead queue.
-
 ## Layout
 
 ```
@@ -68,7 +65,7 @@ tests; the UI only reads the per-week fields it produces.
   Vite resolver. Raw `node` cannot run them directly.
 - All quantities are in **build-equivalents** (one finished build = 1.0). WiP is the *sum of fractional
   progress* across in-progress builds, matching KPI-132's definition.
-- Ramp denominators (`wipRamp`, `rampWeeks`, `hpbRamp`) and `stations` are clamped to ≥ 1 in
+- Ramp denominators (`wipRamp`, `rampWeeks`, `hpbRamp`) are clamped to ≥ 1 in
   `buildScenario()` — they divide, so a 0 would poison the projection with NaN.
 - `deliveryDates()` scans cumulative **output**, never input. That distinction is the whole point of
   the model — don't revert it to `cumInput`.

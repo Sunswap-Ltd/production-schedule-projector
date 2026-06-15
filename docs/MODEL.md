@@ -37,7 +37,7 @@ cumOutput(w) = cumInput(w) − (WiP_w − WiP_0)
   *plus* the partial builds you're draining off the line — a one-time bonus of finished builds equal to
   the WiP drained. Dates pull **in**.
 - **Build WiP up** (`WiP_w > WiP_0`): `cumOutput < cumInput`. Work you perform is piling up as partial
-  builds instead of shipping. Dates push **out**. (This is the "blocked exit station" case — see §5.)
+  builds instead of shipping. Dates push **out**. (This is the "blocked exit station" case — see §4.)
 - **Flat WiP**: `cumOutput = cumInput`. Output equals input; dates are purely throughput-bound and
   independent of the WiP *level*.
 
@@ -56,26 +56,7 @@ Over the 8 weeks you ship 8 BE *extra* (40 shipped vs 32 fed in) — exactly the
 Once WiP flattens at 4, output reverts to 4 BE/wk. The burn-down is a one-off acceleration, not a
 permanent rate change.
 
-## 3. Baseline (healthy) WiP = stations ÷ 2
-
-With `N` stations, a full healthy line holds one build per station. A build at station `k` has finished
-stations `1..k−1` and is on average halfway through station `k`, so its progress in BE is:
-
-```
-(k−1)/N + 1/(2N)
-```
-
-Summing over all `N` occupied stations:
-
-```
-Σ_{k=1..N} [ (k−1)/N + 1/(2N) ]  =  (N−1)/2 + 1/2  =  N/2
-```
-
-So **baseline WiP = N/2** (8 stations → 4.0 BE). This is the WiP of a full, smoothly-flowing line; any
-WiP above it is *dead queue* — builds started but not in a station, adding lead time without throughput.
-`buildScenario()` derives `baselineWip = stations / 2`.
-
-## 4. Lead time (Little's Law)
+## 3. Lead time (Little's Law)
 
 Little's Law (`WiP = throughput × lead-time`) gives the per-unit lead time as a **readout**:
 
@@ -87,7 +68,7 @@ Note this is an *identity*, not a lever: on a throughput-bound line, raising the
 lead time but does **not** change the completion schedule. The schedule only moves when WiP is *changing*
 (§2). Both facts are the same equation with `ΔWiP = 0` or not.
 
-## 5. Scope & assumptions
+## 4. Scope & assumptions
 
 - **Labour is the binding constraint** in the normal regime: `input = hrs ÷ hrs-per-build` assumes the
   line is balanced and every labour-hour converts into forward progress. If a single station became a
@@ -96,9 +77,9 @@ lead time but does **not** change the completion schedule. The schedule only mov
   does not model per-station capacity explicitly. A future extension could cap output by an
   exit-station rate; WiP would then fall out as a diagnostic.
 - Output is clamped to ≥ 0 (you cannot un-ship a build); `cumOutput` is monotonic.
-- Ramp denominators and station count are clamped to ≥ 1 to avoid divide-by-zero NaN.
+- Ramp denominators are clamped to ≥ 1 to avoid divide-by-zero NaN.
 
-## 6. Design history (why not a congestion penalty?)
+## 5. Design history (why not a congestion penalty?)
 
 An earlier iteration made excess WiP inflate effective hours-per-build (a Lean "congestion drag"
 penalty), auto-fitted from historical KPI data. It was **rejected** because:

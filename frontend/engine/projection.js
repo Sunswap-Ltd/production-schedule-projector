@@ -126,16 +126,9 @@ export function buildScenario(sliders) {
   const annualSick = annualContracted * (sliders.sicknessPct / 100);
   const effectivePerTechWeekly = Math.max(1, (annualContracted - annualHoliday - annualSick) / 52);
 
-  const stations = Math.max(1, sliders.stations);
-
   return {
     targetWip: sliders.targetWip,
     wipRampWeeks: Math.max(1, sliders.wipRamp),
-    stations,
-    // Baseline (healthy) WiP: N stations each holding one build at its average
-    // mid-station progress sums to N/2 in build-equivalents. WiP above this is dead
-    // queue — started but not in a station, adding lead time without throughput.
-    baselineWip: stations / 2,
     startTechs: sliders.startTechs,
     endTechs: sliders.endTechs,
     rampWeeks: Math.max(1, sliders.rampWeeks),

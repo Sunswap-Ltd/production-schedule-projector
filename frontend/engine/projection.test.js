@@ -6,7 +6,6 @@ function sliders(overrides = {}) {
   return {
     targetWip: 5,
     wipRamp: 12,
-    stations: 8,
     startTechs: 12,
     endTechs: 12,
     rampWeeks: 12,
@@ -25,17 +24,11 @@ function sliders(overrides = {}) {
 const MON = new Date(2026, 8, 7); // 2026-09-07, a Monday in a holiday-free stretch
 
 describe('buildScenario', () => {
-  it('derives baseline WiP as stations / 2', () => {
-    expect(buildScenario(sliders({stations: 8})).baselineWip).toBe(4);
-    expect(buildScenario(sliders({stations: 10})).baselineWip).toBe(5);
-  });
-
-  it('clamps ramp weeks and stations to >= 1 (no divide-by-zero)', () => {
-    const s = buildScenario(sliders({wipRamp: 0, rampWeeks: 0, hpbRamp: 0, stations: 0}));
+  it('clamps ramp weeks to >= 1 (no divide-by-zero)', () => {
+    const s = buildScenario(sliders({wipRamp: 0, rampWeeks: 0, hpbRamp: 0}));
     expect(s.wipRampWeeks).toBe(1);
     expect(s.rampWeeks).toBe(1);
     expect(s.hpbRampWeeks).toBe(1);
-    expect(s.stations).toBe(1);
     // and the projection produces no NaN
     const proj = project(s, 6, MON);
     expect(proj.every(p => Number.isFinite(p.cumOutput))).toBe(true);
