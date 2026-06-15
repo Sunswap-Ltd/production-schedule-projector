@@ -1,6 +1,8 @@
 {
     "scripts": {
-        "lint": "eslint frontend"
+        "lint": "eslint frontend",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@airtable/blocks": "interface-alpha",
@@ -13,6 +15,7 @@
         "eslint": "^9.26.0",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^5.2.0",
-        "globals": "^16.0.0"
+        "globals": "^16.0.0",
+        "vitest": "^3.2.6"
     }
 }

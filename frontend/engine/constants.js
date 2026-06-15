@@ -12,6 +12,7 @@ export const HIST_WEEK_COUNT = 6;
 export const DEFAULT_SLIDERS = {
   targetWip: 5,
   wipRamp: 12,
+  stations: 8,
   startTechs: 10,
   endTechs: 15,
   rampWeeks: 12,
@@ -28,6 +29,7 @@ export const DEFAULT_SLIDERS = {
 export const SLIDER_CONFIG = [
   {id: "targetWip", label: "Target WiP (build-equivalents)", min: 0, max: 15, step: 0.5, format: v => v.toFixed(1), group: "scenario"},
   {id: "wipRamp", label: "WiP ramp (weeks to reach target)", min: 1, max: 26, step: 1, format: v => v + " wk", group: "scenario"},
+  {id: "stations", label: "Assembly stations (baseline WiP = N/2)", min: 1, max: 20, step: 1, format: v => v, group: "scenario"},
   {id: "startTechs", label: "Techs employed start of ramp", min: 1, max: 50, step: 1, format: v => v, group: "scenario"},
   {id: "endTechs", label: "Techs employed end of ramp", min: 1, max: 50, step: 1, format: v => v, group: "scenario"},
   {id: "rampWeeks", label: "Ramp weeks (techs ramp duration)", min: 1, max: 26, step: 1, format: v => v + " wk", group: "scenario"},
