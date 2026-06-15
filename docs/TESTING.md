@@ -17,7 +17,7 @@ it ships, with no build step or `node` import-resolution workarounds.
 ## What's covered
 
 `frontend/engine/projection.test.js`
-- **`buildScenario`** — baseline WiP = stations/2; ramp/station clamps to ≥ 1 (no NaN).
+- **`buildScenario`** — ramp clamps to ≥ 1 (no NaN).
 - **Flow balance** — flat WiP ⇒ output = input; burn-down ⇒ `cumOutput = cumInput − (WiP − WiP0)` and
   the total delivery bonus equals the WiP drained; build-up ⇒ output < input; output never negative;
   lead time = WiP/output.
